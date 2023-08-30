@@ -8,6 +8,18 @@ logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler(stream=sys.stdout))
 
 
+class Client:
+    def __init__(self, username, writer):
+        self.username = username
+        self.writer = writer
+
+
+class Message:
+    def __init__(self, username, data):
+        self.username = username
+        self.data = data
+
+
 class Server:
     def __init__(self):
         self.clients = []
@@ -15,19 +27,24 @@ class Server:
 
 
     async def client_connected(self, reader: StreamReader, writer: StreamWriter):
-        self.clients.append(writer)
-
         address = writer.get_extra_info('peername')
         logger.info('Client connected: %s', address)
 
-        username = await reader.read(1024)
-        writer.write(f"Welcome to the messenger, {username.decode().strip()}! \n".encode())
+        username = (await reader.read(1024)).decode().strip()
+        client = Client(
+                username=username, writer=writer
+            )
+
+        self.clients.append(
+            client
+        )
+        writer.write(f"Welcome to the messenger, {username}! \n".encode())
         await writer.drain()
 
         while True:
             data = await reader.read(1024)
             if data == 'quit':
-                self.clients.remove(writer)
+                self.clients.remove(client)
                 writer.write("Disconnected from the chat.\n".encode())
                 await writer.drain()
                 break
@@ -37,9 +54,11 @@ class Server:
         writer.close()
 
     async def broadcast(self, msg):
-        for writer in self.clients:
-            writer.write(msg)
-            await writer.drain()
+        print(self.clients)
+        for client in self.clients:
+            print(client.writer)
+            client.writer.write(msg)
+            await client.writer.drain()
 
 
     async def run(self, host: str, port: int):

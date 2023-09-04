@@ -6,7 +6,8 @@ authors = ["Shumakova Evgeniia"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.11"
+httpx = "^0.24.1"
 
 
 [build-system]

@@ -1,78 +1,95 @@
-import logging
-import sys
 import asyncio
-from asyncio.streams import StreamReader, StreamWriter
+import logging
+import traceback
+from asyncio import StreamReader, StreamWriter
+from http import HTTPStatus
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler(stream=sys.stdout))
+from model.chat import Chat, Message
+from model.exceptions import BadRequestException, NotFoundException
+from model.custom_http import Request, Response
+from utils import logging_config
 
+MAX_HEADERS = 100
+MAX_LINE = 64 * 1024
 
-class Client:
-    def __init__(self, username, writer):
-        self.username = username
-        self.writer = writer
-
-
-class Message:
-    def __init__(self, username, data):
-        self.username = username
-        self.data = data
+logging_config.setup_logger()
 
 
-class Server:
-    def __init__(self):
-        self.clients = []
-        self.messages = []
+class HttpServer:
+    def __init__(self, host, port, server_name):
+        self._host = host
+        self._port = port
+        self._server_name = server_name
+        self.chat = Chat()
+
+    async def router(self, request: Request, reader: StreamReader, writer: StreamWriter):
+        match (request.method, request.path):
+            case ("POST", "/connect"):
+                return await self.chat.client_connected(request, reader, writer)
+
+            case ("POST", "/send-private"):
+                data = request.json
+                await self.chat.send_private_message(
+                    to_username=data.to_username,
+                    msg=Message(data.from_username, data.message)
+                )
+                return Response(HTTPStatus.OK, HTTPStatus.OK.phrase)
+
+            case ("POST", "/send-all"):
+                data = request.json
+                await self.chat.broadcast(msg=Message(data.from_username, data.message))
+                return Response(HTTPStatus.OK, HTTPStatus.OK.phrase)
+
+            case ("GET", "/status"):
+                return Response(HTTPStatus.OK, HTTPStatus.OK.phrase, headers=None, body=await self.chat.get_status())
+
+        return Response(HTTPStatus.NOT_FOUND, HTTPStatus.NOT_FOUND.phrase)
 
     async def client_connected(self, reader: StreamReader, writer: StreamWriter):
         address = writer.get_extra_info('peername')
-        logger.info('Client connected: %s', address)
+        logging.info('Request from: %s', address)
 
-        username = (await reader.read(1024)).decode().strip()
-        client = Client(
-                username=username, writer=writer
-            )
+        try:
+            req = await Request.from_stream(reader)
+            logging.info(req.to_text())
+            await self.validate_request(req)
+            resp = await self.router(req, reader, writer)
+        except NotFoundException as e:
+            resp = Response(HTTPStatus.NOT_FOUND, HTTPStatus.NOT_FOUND.phrase, body=e)
+        except BadRequestException as e:
+            logging.error(traceback.print_exc())
+            resp = Response(HTTPStatus.BAD_REQUEST, HTTPStatus.BAD_REQUEST.phrase, body=e)
+        except:
+            logging.error(traceback.print_exc())
+            resp = Response(HTTPStatus.INTERNAL_SERVER_ERROR, HTTPStatus.INTERNAL_SERVER_ERROR.phrase)
 
-        self.clients.append(
-            client
-        )
-        writer.write(f"Welcome to the messenger, {username}! \n".encode())
-        await writer.drain()
+        if resp:
+            logging.info('resp.to_text()')
+            logging.info(resp.to_text())
+            writer.write(resp.to_text().encode())
+            await writer.drain()
 
-        while True:
-            data = (await reader.read(1024)).decode()
-            if data == 'quit':
-                self.clients.remove(client)
-                writer.write("Disconnected from the chat.\n".encode())
-                await writer.drain()
-                break
-
-            msg = Message(
-                username=username, data=data
-            )
-            await self.broadcast(msg)
-
-        logger.info('Stop serving %s', address)
+        logging.info('Closed connection %s', address)
         writer.close()
 
-    async def broadcast(self, msg: Message):
-        for client in self.clients:
-            if msg.username == client.username:
-                continue
-            client.writer.write(f"{msg.username}: {msg.data}".encode())
-            await client.writer.drain()
+    async def validate_request(self, req):
+        host = req.headers.get("Host")
+        if not host:
+            raise BadRequestException("Bad request")
+        if host not in (self._server_name, f"{self._server_name}:{self._port}", f"{self._host}:{self._port}"):
+            raise NotFoundException("Not found")
 
+    async def run(self):
+        logging.info(f"Serving at {self._host}:{self._port}")
 
-    async def run(self, host: str, port: int):
-        print(f"Serving at {host}:{port}")
         srv = await asyncio.start_server(
-            self.client_connected, host, port)
+            self.client_connected, self._host, self._port
+        )
 
         async with srv:
             await srv.serve_forever()
 
 
 if __name__ == '__main__':
-    server = Server()
-    asyncio.run(server.run('127.0.0.1', 8000))
+    server = HttpServer('127.0.0.1', 8001, 'chat.local')
+    asyncio.run(server.run())

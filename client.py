@@ -1,31 +1,44 @@
 import asyncio
 import json
+import re
 import sys
 import argparse
 
+import colorama
 import httpx
+from colorama import Fore, Style
 
+from model.chat import Message
 from model.custom_http import Request
 
 
+PRIVATE_MSG_PATTERN = re.compile(r"^@(\w+)")
+
+
 class Client:
-    async def start_chatting(self, host: str, port: int):
-
-        print("Welcome to the messenger!")
-        print("If you want to quit, enter 'quit'")
-        print("Enter your username: ",)
-        username = sys.stdin.readline().strip()
-
+    async def connect(self, host: str, port: int, username: str):
+        data = json.dumps({'username': username})
         req = Request('POST', '/connect', 'HTTP/1.1', {
-            'Host': f'{host}:{port}',
-        }, json.dumps({'username': username}))
+            'Host': f'{host}:{port}'
+        }, data)
 
         reader, writer = await asyncio.open_connection(host, port)
         writer.write(req.to_text().encode())
         await writer.drain()
+        return reader, writer
 
+    async def start_chatting(self, host: str, port: int):
+        colorama.init()
+        print(Fore.YELLOW, end="")
+        print("Welcome to the messenger!")
+        print("If you want to quit, enter 'quit'")
+        print("Enter your username: " + Style.RESET_ALL)
+
+        username = sys.stdin.readline().strip()
+
+        reader, writer = await self.connect(host, port, username)
         receive_task = asyncio.create_task(self._receive_messages(reader))
-        send_task = asyncio.create_task(self._send_messages(writer))
+        send_task = asyncio.create_task(self._send_messages(writer, username))
 
         await asyncio.gather(receive_task, send_task)
 
@@ -33,14 +46,26 @@ class Client:
     async def _receive_messages(reader):
         while True:
             data = await reader.readline()
-            message = data.decode().strip()
-            print(message)
+            message = Message.from_bytes(data)
+            if message.is_private:
+                print(Fore.RED, end="")
+            if message.is_system:
+                print(Fore.YELLOW, end="")
+            print((f"{message.from_username}: " if message.from_username else "") + message.data.strip() + Style.RESET_ALL)
 
     @staticmethod
-    async def _send_messages(writer):
+    async def _send_messages(writer, from_username):
         while True:
-            message = await asyncio.get_running_loop().run_in_executor(None, sys.stdin.readline)
-            writer.write(message.encode())
+            data = (await asyncio.get_running_loop().run_in_executor(None, sys.stdin.readline)).strip()
+            if not data:
+                continue
+
+            is_private = re.search(PRIVATE_MSG_PATTERN, data)
+            to_username = is_private.group(1) if is_private else None
+
+            msg = Message(from_username=from_username, to_username=to_username, data=data, is_private=bool(is_private))
+
+            writer.write(msg.to_bytes())
             await writer.drain()
 
 
@@ -59,6 +84,9 @@ if __name__ == '__main__':
     parser.add_argument('--to_username', dest='to_username',
                         help='enter target user name', metavar='<user_name>')
 
+    parser.add_argument('--message', dest='message',
+                        help='enter message', metavar='<message_text>')
+
     args = parser.parse_args()
     host, port = args.server.split(":")
 
@@ -66,9 +94,13 @@ if __name__ == '__main__':
         case 'connect':
             asyncio.run(Client().start_chatting(host, int(port)))
         case 'send_private':
-            httpx.post(f'http://{host}:{port}/send-private', json={'msg': sys.stdin.readline().strip(), 'to_username': args.to_username, 'from_username': args.from_username}, timeout=60)
+            msg = Message(from_username=args.from_username, to_username=args.to_username, data=args.message, is_private=True)
+            resp = httpx.post(f'http://{host}:{port}/send-private', json=msg.to_dict())
+            print(resp.status_code)
         case 'send_all':
-            httpx.post(f'http://{host}:{port}/send-all', json={'msg': sys.stdin.readline().strip(), 'from_username': args.from_username}, timeout=60)
+            msg = Message(from_username=args.from_username, to_username=None, data=args.message, is_private=False)
+            resp = httpx.post(f'http://{host}:{port}/send-all', json=msg.to_dict())
+            print(resp.status_code)
         case 'status':
             resp = httpx.get(f'http://{host}:{port}/status')
             print(resp.text)

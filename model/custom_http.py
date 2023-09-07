@@ -11,7 +11,7 @@ MAX_HEADERS = 100
 
 
 def headers_to_text(headers):
-    return r'\r\n'.join([k + ':' + v for k, v in headers.items()])
+    return '\r\n'.join([k + ':' + v for k, v in headers.items()])
 
 
 class Request:
@@ -22,6 +22,7 @@ class Request:
         self.ver = ver
         self.headers = headers
         self.body = body
+        headers["Content-Length"] = str(len(f"{body}\r\n\r\n".encode()))
 
     @property
     def path(self):
@@ -59,12 +60,14 @@ class Request:
         if ver != "HTTP/1.1":
             raise BadRequestException("Unexpected HTTP version")
 
-        headers, is_eof = await cls.parse_headers(reader)
+        headers = await cls.parse_headers(reader)
 
-        if is_eof or method in [HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.DELETE, HTTPMethod.OPTIONS, HTTPMethod.TRACE]:
+        content_length = headers.get("Content-Length")
+
+        if not content_length or method in [HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.DELETE, HTTPMethod.OPTIONS, HTTPMethod.TRACE]:
             body = b""
         else:
-            body = await cls.parse_body(reader)
+            body = await cls.parse_body(reader, int(content_length))
 
         return Request(method, target, ver, headers, body)
 
@@ -85,25 +88,14 @@ class Request:
 
         sheaders = b"".join(headers).decode("iso-8859-1")
 
-        return Parser().parsestr(sheaders), reader.at_eof()
+        return Parser().parsestr(sheaders)
 
     @staticmethod
-    async def parse_body(reader: StreamReader):
-        textb = b""
-        while True:
-            print('textb')
-            line = await reader.readline()
+    async def parse_body(reader: StreamReader, content_length: int):
+        if content_length > MAX_LINE:
+            raise BadRequestException("Content length is too big")
 
-            print(line)
-
-            if len(line) > MAX_LINE:
-                raise BadRequestException("Body line is too long")
-
-            if not line or (line in (b"\r\n", b"\n", b"")):
-                break
-
-            textb += line
-        print(textb)
+        textb = await reader.readexactly(content_length)
         return textb.decode("iso-8859-1")
 
 

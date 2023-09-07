@@ -4,3 +4,11 @@ class BadRequestException(Exception):
 
 class NotFoundException(Exception):
     pass
+
+
+class ClientNotFoundError(Exception):
+    pass
+
+
+class InvalidMessageError(Exception):
+    pass

@@ -4,9 +4,9 @@ import traceback
 from asyncio import StreamReader, StreamWriter
 from http import HTTPStatus
 
-from model.chat import Chat, Message
 from model.exceptions import BadRequestException, NotFoundException
 from model.custom_http import Request, Response
+from router.chat_router import ChatRouter
 from utils import logging_config
 
 MAX_HEADERS = 100
@@ -20,28 +20,21 @@ class HttpServer:
         self._host = host
         self._port = port
         self._server_name = server_name
-        self.chat = Chat()
+        self.chat_router = ChatRouter()
 
     async def router(self, request: Request, reader: StreamReader, writer: StreamWriter):
         match (request.method, request.path):
             case ("POST", "/connect"):
-                return await self.chat.client_connected(request, reader, writer)
+                return await self.chat_router.connect(request, reader, writer)
 
             case ("POST", "/send-private"):
-                data = request.json
-                await self.chat.send_private_message(
-                    to_username=data.to_username,
-                    msg=Message(data.from_username, data.message)
-                )
-                return Response(HTTPStatus.OK, HTTPStatus.OK.phrase)
+                return await self.chat_router.send_private(request)
 
             case ("POST", "/send-all"):
-                data = request.json
-                await self.chat.broadcast(msg=Message(data.from_username, data.message))
-                return Response(HTTPStatus.OK, HTTPStatus.OK.phrase)
+                return await self.chat_router.send_all(request)
 
             case ("GET", "/status"):
-                return Response(HTTPStatus.OK, HTTPStatus.OK.phrase, headers=None, body=await self.chat.get_status())
+                return await self.chat_router.get_status()
 
         return Response(HTTPStatus.NOT_FOUND, HTTPStatus.NOT_FOUND.phrase)
 
@@ -64,7 +57,6 @@ class HttpServer:
             resp = Response(HTTPStatus.INTERNAL_SERVER_ERROR, HTTPStatus.INTERNAL_SERVER_ERROR.phrase)
 
         if resp:
-            logging.info('resp.to_text()')
             logging.info(resp.to_text())
             writer.write(resp.to_text().encode())
             await writer.drain()

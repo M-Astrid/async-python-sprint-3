@@ -1,5 +1,4 @@
 import logging
-import traceback
 
 
 def setup_logger():
@@ -12,14 +11,3 @@ def setup_logger():
         datefmt="%m.%d.%Y %H:%M:%S",
         level=logging.INFO,
     )
-
-
-async def log_exc(func):
-    async def wrapper(*args, **kwargs):
-        try:
-            await func(*args, **kwargs)
-        except Exception:
-            logging.error(traceback.print_exc())
-            raise
-
-    return wrapper

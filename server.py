@@ -16,13 +16,15 @@ logging_config.setup_logger()
 
 
 class HttpServer:
-    def __init__(self, host, port, server_name):
+    def __init__(self, host: str, port: int, server_name: str):
         self._host = host
         self._port = port
         self._server_name = server_name
         self.chat_router = ChatRouter()
 
-    async def router(self, request: Request, reader: StreamReader, writer: StreamWriter):
+    async def router(
+        self, request: Request, reader: StreamReader, writer: StreamWriter
+    ):
         match (request.method, request.path):
             case ("POST", "/connect"):
                 return await self.chat_router.connect(request, reader, writer)
@@ -38,9 +40,11 @@ class HttpServer:
 
         return Response(HTTPStatus.NOT_FOUND, HTTPStatus.NOT_FOUND.phrase)
 
-    async def client_connected(self, reader: StreamReader, writer: StreamWriter):
-        address = writer.get_extra_info('peername')
-        logging.info('Request from: %s', address)
+    async def client_connected(
+        self, reader: StreamReader, writer: StreamWriter
+    ):
+        address = writer.get_extra_info("peername")
+        logging.info("Request from: %s", address)
 
         try:
             req = await Request.from_stream(reader)
@@ -48,27 +52,38 @@ class HttpServer:
             await self.validate_request(req)
             resp = await self.router(req, reader, writer)
         except NotFoundException as e:
-            resp = Response(HTTPStatus.NOT_FOUND, HTTPStatus.NOT_FOUND.phrase, body=e)
+            resp = Response(
+                HTTPStatus.NOT_FOUND, HTTPStatus.NOT_FOUND.phrase, body=e
+            )
         except BadRequestException as e:
             logging.error(traceback.print_exc())
-            resp = Response(HTTPStatus.BAD_REQUEST, HTTPStatus.BAD_REQUEST.phrase, body=e)
-        except:
+            resp = Response(
+                HTTPStatus.BAD_REQUEST, HTTPStatus.BAD_REQUEST.phrase, body=e
+            )
+        except Exception:
             logging.error(traceback.print_exc())
-            resp = Response(HTTPStatus.INTERNAL_SERVER_ERROR, HTTPStatus.INTERNAL_SERVER_ERROR.phrase)
+            resp = Response(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
+            )
 
         if resp:
             logging.info(resp.to_text())
             writer.write(resp.to_text().encode())
             await writer.drain()
 
-        logging.info('Closed connection %s', address)
+        logging.info("Closed connection %s", address)
         writer.close()
 
-    async def validate_request(self, req):
+    async def validate_request(self, req: Request):
         host = req.headers.get("Host")
         if not host:
             raise BadRequestException("Bad request")
-        if host not in (self._server_name, f"{self._server_name}:{self._port}", f"{self._host}:{self._port}"):
+        if host not in (
+            self._server_name,
+            f"{self._server_name}:{self._port}",
+            f"{self._host}:{self._port}",
+        ):
             raise NotFoundException("Not found")
 
     async def run(self):
@@ -82,6 +97,6 @@ class HttpServer:
             await srv.serve_forever()
 
 
-if __name__ == '__main__':
-    server = HttpServer('127.0.0.1', 8001, 'chat.local')
+if __name__ == "__main__":
+    server = HttpServer("127.0.0.1", 8001, "chat.local")
     asyncio.run(server.run())

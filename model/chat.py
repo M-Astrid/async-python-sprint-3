@@ -28,7 +28,7 @@ class Message(DataClassDictMixin):
         return f"{json.dumps(self.to_dict())}\n".encode()
 
     @classmethod
-    def from_bytes(cls, jsonb):
+    def from_bytes(cls, jsonb: bytes):
         data = json.loads(jsonb.strip())
         if not data["data"].strip():
             raise InvalidMessageError("Empty data")

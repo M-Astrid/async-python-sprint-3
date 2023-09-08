@@ -10,13 +10,12 @@ MAX_LINE = 64 * 1024
 MAX_HEADERS = 100
 
 
-def headers_to_text(headers):
-    return '\r\n'.join([k + ':' + v for k, v in headers.items()])
+def headers_to_text(headers: dict):
+    return "\r\n".join([k + ":" + v for k, v in headers.items()])
 
 
 class Request:
-
-    def __init__(self, method, target, ver, headers, body):
+    def __init__(self, method: str, target: str, ver: str, headers: dict, body: str | None):
         self.method = method
         self.target = target
         self.ver = ver
@@ -36,20 +35,15 @@ class Request:
     def url(self):
         return urlparse(self.target)
 
-    @property
     def json(self):
-        try:
-            return json.loads(self.body)
-        except:
-            return None
+        return json.loads(self.body)
 
     def to_text(self):
         return f"{self.method} {self.target} {self.ver}\r\n{headers_to_text(self.headers)}\r\n\r\n{self.body}\r\n\r\n"
 
     @classmethod
-    async def from_stream(cls, reader):
-        req_line = await reader.readline()
-        req_line = str(req_line, "iso-8859-1")
+    async def from_stream(cls, reader: StreamReader):
+        req_line = str((await reader.readline()), "iso-8859-1")
         req_line = req_line.rstrip("\r\n")
         words = req_line.split()
         if len(words) != 3:
@@ -64,7 +58,13 @@ class Request:
 
         content_length = headers.get("Content-Length")
 
-        if not content_length or method in [HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.DELETE, HTTPMethod.OPTIONS, HTTPMethod.TRACE]:
+        if not content_length or method in [
+            HTTPMethod.GET,
+            HTTPMethod.HEAD,
+            HTTPMethod.DELETE,
+            HTTPMethod.OPTIONS,
+            HTTPMethod.TRACE,
+        ]:
             body = b""
         else:
             body = await cls.parse_body(reader, int(content_length))
@@ -100,11 +100,14 @@ class Request:
 
 
 class Response:
-    def __init__(self, status, reason, headers=None, body=None):
+    def __init__(self, status: int, reason: str, headers: dict | None = None, body: str | None = None):
         self.status = status
         self.reason = reason
         self.headers = headers
         self.body = body
 
     def to_text(self):
-        return f"HTTP/1.1 {self.status} {self.reason}\r\n{headers_to_text(self.headers) if self.headers else ''}\r\n\r\n" + (f"{self.body}\r\n\r\n" if self.body else "")
+        return (
+            f"HTTP/1.1 {self.status} {self.reason}\r\n{headers_to_text(self.headers) if self.headers else ''}\r\n\r\n"
+            + (f"{self.body}\r\n\r\n" if self.body else "")
+        )

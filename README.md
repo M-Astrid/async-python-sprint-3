@@ -40,7 +40,7 @@ positional arguments:
 ```POST /send-private``` - отправить приватное сообщение  
 ```
 {
-    "data": "hello", 
+    "data": str, 
     "from_username": str, 
     "to_username": str,
 }
@@ -48,7 +48,7 @@ positional arguments:
 ```POST /send-all``` - отправить сообщение в общий чат  
 ```
 {
-    "data": "hello", 
+    "data": str, 
     "from_username": str, 
 }
 ```

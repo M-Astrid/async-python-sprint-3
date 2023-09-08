@@ -48,7 +48,7 @@ class Client:
             data = await reader.readline()
             message = Message.from_bytes(data)
             if message.is_private:
-                print(Fore.RED, end="")
+                print(Fore.RED + "[private] ", end="")
             if message.is_system:
                 print(Fore.YELLOW, end="")
             print((f"{message.from_username}: " if message.from_username else "") + message.data.strip() + Style.RESET_ALL)
@@ -72,20 +72,20 @@ class Client:
 if __name__ == '__main__':
     COMMANDS = ['connect', 'send_private', 'send_all', 'status']
 
-    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser = argparse.ArgumentParser(description='Chat client')
     parser.add_argument('--server-url', dest='server',
                         help='chat server address in format <host>:<port>', required=True, metavar='<host>:<port>')
     parser.add_argument('command', metavar='command', type=str,
                         help=f'a command to execute {COMMANDS}', choices=COMMANDS)
 
     parser.add_argument('--from_username', dest='from_username',
-                        help='enter your name', metavar='<your_name>')
+                        help='enter your name', metavar='<your_name>', required=bool({'send_all', 'send_private'} & set(sys.argv)))
 
     parser.add_argument('--to_username', dest='to_username',
-                        help='enter target user name', metavar='<user_name>')
+                        help='enter target user name', metavar='<user_name>', required='send_private' in sys.argv)
 
     parser.add_argument('--message', dest='message',
-                        help='enter message', metavar='<message_text>')
+                        help='enter message', metavar='<message_text>', required=bool({'send_all', 'send_private'} & set(sys.argv)))
 
     args = parser.parse_args()
     host, port = args.server.split(":")
@@ -96,11 +96,11 @@ if __name__ == '__main__':
         case 'send_private':
             msg = Message(from_username=args.from_username, to_username=args.to_username, data=args.message, is_private=True)
             resp = httpx.post(f'http://{host}:{port}/send-private', json=msg.to_dict())
-            print(resp.status_code)
+            print(resp.status_code, resp.text if resp.text else '')
         case 'send_all':
             msg = Message(from_username=args.from_username, to_username=None, data=args.message, is_private=False)
             resp = httpx.post(f'http://{host}:{port}/send-all', json=msg.to_dict())
-            print(resp.status_code)
+            print(resp.status_code, resp.text if resp.text else '')
         case 'status':
             resp = httpx.get(f'http://{host}:{port}/status')
             print(resp.text)

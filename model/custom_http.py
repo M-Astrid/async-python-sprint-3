@@ -107,4 +107,4 @@ class Response:
         self.body = body
 
     def to_text(self):
-        return f"HTTP/1.1 {self.status} {self.reason}\r\n{headers_to_text(self.headers) if self.headers else ''}\r\n\r\n{self.body}\r\n\r\n"
+        return f"HTTP/1.1 {self.status} {self.reason}\r\n{headers_to_text(self.headers) if self.headers else ''}\r\n\r\n" + (f"{self.body}\r\n\r\n" if self.body else "")

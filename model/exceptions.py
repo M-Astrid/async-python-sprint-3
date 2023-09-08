@@ -16,4 +16,3 @@ class InvalidMessageError(Exception):
 
 class MultipleSessionsError(Exception):
     pass
-

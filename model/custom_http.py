@@ -15,7 +15,14 @@ def headers_to_text(headers: dict):
 
 
 class Request:
-    def __init__(self, method: str, target: str, ver: str, headers: dict, body: str | None):
+    def __init__(
+        self,
+        method: str,
+        target: str,
+        ver: str,
+        headers: dict,
+        body: str | None,
+    ):
         self.method = method
         self.target = target
         self.ver = ver
@@ -100,7 +107,13 @@ class Request:
 
 
 class Response:
-    def __init__(self, status: int, reason: str, headers: dict | None = None, body: str | None = None):
+    def __init__(
+        self,
+        status: int,
+        reason: str,
+        headers: dict | None = None,
+        body: str | None = None,
+    ):
         self.status = status
         self.reason = reason
         self.headers = headers

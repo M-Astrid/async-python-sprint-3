@@ -5,7 +5,11 @@ from copy import copy
 
 from model.chat import Client, Message, QUIT_CODE
 from model.custom_http import Request
-from model.exceptions import ClientNotFoundError, InvalidMessageError, MultipleSessionsError
+from model.exceptions import (
+    ClientNotFoundError,
+    InvalidMessageError,
+    MultipleSessionsError,
+)
 
 
 class Chat:
@@ -42,7 +46,9 @@ class Chat:
         except MultipleSessionsError:
             writer.write(
                 Message(
-                    data="Cannot provide multiple sessions for user.", is_system=True, is_error=True
+                    data="Cannot provide multiple sessions for user.",
+                    is_system=True,
+                    is_error=True,
                 ).to_bytes()
             )
         except Exception:
@@ -101,7 +107,9 @@ class Chat:
             client.writer.write(msg.to_bytes())
         await client.writer.drain()
 
-    async def start_message_handler(self, reader: StreamReader, writer: StreamWriter):
+    async def start_message_handler(
+        self, reader: StreamReader, writer: StreamWriter
+    ):
         while True:
             if not (data := (await reader.read(1024)).decode()):
                 break

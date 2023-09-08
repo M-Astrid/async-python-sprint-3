@@ -11,7 +11,9 @@ class ChatRouter:
     def __init__(self):
         self.chat = Chat()
 
-    async def connect(self, request: Request, reader: StreamReader, writer: StreamWriter):
+    async def connect(
+        self, request: Request, reader: StreamReader, writer: StreamWriter
+    ):
         await self.chat.client_connected(request, reader, writer)
 
     async def send_private(self, request):

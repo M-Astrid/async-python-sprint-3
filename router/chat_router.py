@@ -19,6 +19,7 @@ class ChatRouter:
             return Response(HTTPStatus.BAD_REQUEST, HTTPStatus.BAD_REQUEST.phrase, body="to_username and from_username are required")
 
         try:
+            msg.is_private = True
             await self.chat.send_private_message(msg)
         except (ClientNotFoundError, InvalidMessageError) as e:
             return Response(HTTPStatus.BAD_REQUEST, HTTPStatus.BAD_REQUEST.phrase, body=e)

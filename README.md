@@ -3,6 +3,91 @@
 # Install deps
 
     pip install poetry
+    poetry install
+
+# Run server
+
+    poetry run python server.py
+
+# Client usage
+
+    poetry run python client.py [-h] --server-url <host>:<port> [--from_username <your_name>] [--to_username <user_name>] [--message <message_text>] command
+
+```
+positional arguments:                                                                                                                        
+      command               a command to execute ['connect', 'send_private', 'send_all', 'status']                                               
+                                                                                                                                                 
+    options:                                                                                                                                     
+      -h, --help            show this help message and exit                                                                                      
+      --server-url <host>:<port>                                                                                                                 
+                            chat server address in format <host>:<port>                                                                          
+      --from_username <your_name>                                                                                                                
+                            your name                                                                                                      
+      --to_username <user_name>
+                            target user name
+      --message <message_text>
+                            message to send
+```
+
+# API Reference
+
+```POST /connect``` - подключиться к общему чату  
+```
+{
+    "username": str
+}
+```
+```POST /send-private``` - отправить приватное сообщение  
+```
+{
+    "data": "hello", 
+    "from_username": str, 
+    "to_username": str,
+}
+```
+```POST /send-all``` - отправить сообщение в общий чат  
+```
+{
+    "data": "hello", 
+    "from_username": str, 
+}
+```
+```GET /status``` - получить статистику по сообщениям и активным клиентам  
+
+# Example chat usage
+## Chatting
+
+Start server:  
+
+    poetry run python server.py
+
+Connect to chat:  
+
+    poetry run python client.py --server-url 127.0.0.1:8001 connect
+
+Now you can send messages to all users in chat.  
+To send a private message use the following syntax:
+
+    @username <message_text>
+
+## Send single message
+
+Private:
+
+    poetry run python client.py --server-url 127.0.0.1:8001 --message "hello" --from_username "name1" --to_username "name2" send_private
+
+To all users:
+
+    poetry run python client.py --server-url 127.0.0.1:8001 --message "hello" --from_username "name1" send_all
+
+
+
+## Get chat status
+
+    poetry run python client.py --server-url 127.0.0.1:8001 status 
+
+
+## Текст задания:
 
 Спроектируйте и реализуйте приложение для получения и обработки сообщений от клиента.
 
@@ -62,7 +147,7 @@ POST /send
 - [ ] (3 балла) Возможность отправлять файлы различного формата (объёмом не более 5Мб, по умолчанию).
 - [ ] (3 балла) Возможность создавать кастомные приватные чаты и приглашать в него других пользователей. Неприглашенный пользователь может «войти» в такой чат только по сгенерированной ссылке и после подтверждения владельцем чата. 
 - [ ] (4 балла) Пользователь может подключиться с двух и более клиентов одновременно. Состояния должны синхронизироваться между клиентами.
-- [ ] **(5 баллов) Реализовать кастомную реализацию для взаимодействия по протоколу `http` (можно использовать `asyncio.streams`);
+- [x] **(5 баллов) Реализовать кастомную реализацию для взаимодействия по протоколу `http` (можно использовать `asyncio.streams`);
 
 
 ## Требования к решению

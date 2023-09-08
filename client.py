@@ -98,7 +98,7 @@ if __name__ == '__main__':
             resp = httpx.post(f'http://{host}:{port}/send-private', json=msg.to_dict())
             print(resp.status_code, resp.text if resp.text else '')
         case 'send_all':
-            msg = Message(from_username=args.from_username, to_username=None, data=args.message, is_private=False)
+            msg = Message(from_username=args.from_username, to_username=None, data=args.message)
             resp = httpx.post(f'http://{host}:{port}/send-all', json=msg.to_dict())
             print(resp.status_code, resp.text if resp.text else '')
         case 'status':

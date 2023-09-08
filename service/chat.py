@@ -5,7 +5,7 @@ from copy import copy
 
 from model.chat import Client, Message, QUIT_CODE
 from model.custom_http import Request
-from model.exceptions import ClientNotFoundError, InvalidMessageError
+from model.exceptions import ClientNotFoundError, InvalidMessageError, MultipleSessionsError
 
 
 class Chat:
@@ -23,6 +23,9 @@ class Chat:
 
             username = req.json()["username"]
             client = Client(username=username, writer=writer)
+
+            if self.clients.get(username):
+                raise MultipleSessionsError
             self.clients[username] = client
 
             writer.write(
@@ -36,6 +39,12 @@ class Chat:
 
             await self.start_message_handler(reader, writer)
 
+        except MultipleSessionsError:
+            writer.write(
+                Message(
+                    data="Cannot provide multiple sessions for user.", is_system=True, is_error=True
+                ).to_bytes()
+            )
         except Exception:
             logging.error(traceback.print_exc())
             writer.write(

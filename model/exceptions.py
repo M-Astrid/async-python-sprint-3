@@ -12,3 +12,8 @@ class ClientNotFoundError(Exception):
 
 class InvalidMessageError(Exception):
     pass
+
+
+class MultipleSessionsError(Exception):
+    pass
+

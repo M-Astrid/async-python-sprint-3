@@ -13,10 +13,10 @@ class ChatRouter:
 
     async def connect(
         self, request: Request, reader: StreamReader, writer: StreamWriter
-    ):
+    ) -> None:
         await self.chat.client_connected(request, reader, writer)
 
-    async def send_private(self, request):
+    async def send_private(self, request) -> Response:
         msg = Message.from_dict(request.json())
         if not msg.to_username or not msg.from_username:
             return Response(
@@ -35,7 +35,7 @@ class ChatRouter:
 
         return Response(HTTPStatus.OK, HTTPStatus.OK.phrase)
 
-    async def send_all(self, request: Request):
+    async def send_all(self, request: Request) -> Response:
         msg = Message.from_dict(request.json())
         if not msg.from_username:
             return Response(
@@ -53,7 +53,7 @@ class ChatRouter:
 
         return Response(HTTPStatus.OK, HTTPStatus.OK.phrase)
 
-    async def get_status(self):
+    async def get_status(self) -> Response:
         return Response(
             HTTPStatus.OK,
             HTTPStatus.OK.phrase,

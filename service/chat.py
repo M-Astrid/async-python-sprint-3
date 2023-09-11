@@ -59,17 +59,18 @@ class Chat:
                 ).to_bytes()
             )
 
-        if username and username in self.clients:
-            del self.clients[username]
-        writer.write(
-            Message(
-                data="Disconnected from the chat.", is_system=True
-            ).to_bytes()
-        )
-        await writer.drain()
+        finally:
+            if username and username in self.clients:
+                del self.clients[username]
+            writer.write(
+                Message(
+                    data="Disconnected from the chat.", is_system=True
+                ).to_bytes()
+            )
+            await writer.drain()
 
-        logging.info("Stop serving %s", address)
-        writer.close()
+            logging.info("Stop serving %s", address)
+            writer.close()
 
     async def broadcast(self, msg: Message):
         for _, client in self.clients.items():
@@ -111,7 +112,7 @@ class Chat:
         self, reader: StreamReader, writer: StreamWriter
     ):
         while True:
-            if not (data := (await reader.read(1024)).decode()):
+            if not (data := await reader.read(1024)):
                 break
 
             try:

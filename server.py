@@ -9,8 +9,6 @@ from model.custom_http import Request, Response
 from router.chat_router import ChatRouter
 from utils import logging_config
 
-MAX_HEADERS = 100
-MAX_LINE = 64 * 1024
 
 logging_config.setup_logger()
 
@@ -24,7 +22,7 @@ class HttpServer:
 
     async def router(
         self, request: Request, reader: StreamReader, writer: StreamWriter
-    ):
+    ) -> Response | None:
         match (request.method, request.path):
             case ("POST", "/connect"):
                 return await self.chat_router.connect(request, reader, writer)
@@ -99,4 +97,7 @@ class HttpServer:
 
 if __name__ == "__main__":
     server = HttpServer("127.0.0.1", 8001, "chat.local")
-    asyncio.run(server.run())
+    try:
+        asyncio.run(server.run())
+    except KeyboardInterrupt:
+        logging.info("Server stopped")

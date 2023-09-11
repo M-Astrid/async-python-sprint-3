@@ -5,9 +5,7 @@ from http import HTTPMethod
 import json
 
 from model.exceptions import BadRequestException
-
-MAX_LINE = 64 * 1024
-MAX_HEADERS = 100
+from settings import Settings
 
 
 def headers_to_text(headers: dict):
@@ -83,14 +81,14 @@ class Request:
         headers = []
         while True:
             line = await reader.readline()
-            if len(line) > MAX_LINE:
+            if len(line) > Settings.HTTP_MAX_LINE:
                 raise BadRequestException("Header line is too long")
 
             if line in (b"\r\n", b"\n", b""):
                 break
 
             headers.append(line)
-            if len(headers) > MAX_HEADERS:
+            if len(headers) > Settings.HTTP_MAX_HEADERS:
                 raise BadRequestException("Too many headers")
 
         sheaders = b"".join(headers).decode("iso-8859-1")
@@ -99,7 +97,7 @@ class Request:
 
     @staticmethod
     async def parse_body(reader: StreamReader, content_length: int):
-        if content_length > MAX_LINE:
+        if content_length > Settings.HTTP_MAX_LINE:
             raise BadRequestException("Content length is too big")
 
         textb = await reader.readexactly(content_length)

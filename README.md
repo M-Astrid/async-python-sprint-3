@@ -1,4 +1,4 @@
-API + client чата с поддержкой общих комнат и приватных диалогов
+Chat API + client
 
 # Install deps
 
